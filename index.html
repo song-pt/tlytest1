@@ -3,268 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陀螺仪遮罩全能测试</title>
+    <title>陀螺仪遮罩测试 - 黑色版</title>
     <style>
-        :root {
-            --primary: #007AFF;
-            --danger: #ff3b30; /* 重置按钮醒目颜色 */
-            --bg: #ffffff;
-            --card-gradient: linear-gradient(135deg, #6e8efb, #a777e3);
+        :root { --primary: #007AFF; --danger: #ff3b30; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: system-ui, -apple-system; }
+
+        /* 激活层 */
+        #start-btn { 
+            position: fixed; inset: 0; background: #000; color: #fff; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            z-index: 9999; cursor: pointer; text-align: center;
         }
 
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-            background: var(--bg); font-family: system-ui, -apple-system, sans-serif;
-            perspective: 1000px; /* 为3D翻转提供视距 */
-        }
-
-        /* 1. 左上角控制 */
-        .top-left-controls {
-            position: fixed; top: 20px; left: 20px; z-index: 1000;
-            display: flex; gap: 10px;
-        }
-
-        .ctrl-btn {
-            background: rgba(255,255,255,0.9); padding: 10px 18px;
-            border: 1px solid #ccc; border-radius: 8px; cursor: pointer;
-            backdrop-filter: blur(4px); font-weight: bold; font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.1s, background 0.2s;
-        }
-        .ctrl-btn:active { transform: scale(0.95); }
-        
-        .save-btn { /* 重置按钮样式 */
-            background: var(--danger); color: white; border: none;
-        }
-        .save-btn:hover { background: #e03126; }
-
-        /* 2. 3D 卡片与文字层 */
-        #stage {
+        /* 基础布局 */
+        #main-container {
             position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; z-index: 1;
-            transform-style: preserve-3d; /* 启用3D子元素 */
         }
 
-        #card {
-            width: 80%; height: 60%; max-width: 400px; max-height: 500px;
-            background: var(--card-gradient); border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.3);
-            backface-visibility: hidden; /* 翻转时不显示背面 */
-            position: relative; overflow: hidden; /* 防止内容和滚动条溢出卡片 */
+        /* 文字显示区域（阅读器模式） */
+        #text-box {
+            position: relative;
+            width: 85%; max-height: 70%; 
+            padding: 30px; box-sizing: border-box;
+            background: #f9f9f9; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow-y: auto; /* 允许滚动 */
+            word-break: break-all; /* 强制换行 */
+            white-space: pre-wrap;
+            font-size: 24px; line-height: 1.6; color: #111;
         }
 
-        /* 卡片内部文本容器：支持自动换行和垂直滚动 */
-        #display-text {
-            font-size: 8vw; font-weight: 900; color: #fff;
-            position: absolute; inset: 0;
-            padding: 30px; box-sizing: border-box; /* padding不撑大容器 */
-            display: flex; justify-content: center; /* 居中卡片内部文本块 */
-            align-items: center; /* 当内容较短时垂直居中 */
-            
-            /* 核心：自动换行 */
-            word-wrap: break-word; overflow-wrap: break-word; /* 现代标准 */
-            text-align: center;
-        }
-        
-        /* 内部滚动文本块 */
-        #scrolling-content {
-            font-size: 24px; font-weight: bold; line-height: 1.4;
-            max-width: 90%; max-height: 90%; /* 给文本左右留出空间 */
-            overflow-y: auto; /* 当内容超过 max-height 时显示垂直滚动条 */
-        }
-        
-        /* 自定义卡片内部滚动条样式 */
-        #scrolling-content::-webkit-scrollbar { width: 6px; }
-        #scrolling-content::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.4); border-radius: 3px; }
-        #scrolling-content::-webkit-scrollbar-track { background: transparent; }
-
-        /* 3. 灰色遮罩层（通过不透明度变化） */
-        #mask-overlay {
-            position: fixed; inset: 0; background-color: #333; /* 灰块颜色 */
-            opacity: 0; /* 初始全透明 */ z-index: 5;
-            pointer-events: none; /* 绝不阻挡点击 */
+        /* 全屏黑色遮罩 */
+        #full-mask {
+            position: fixed; inset: 0; background: #000; 
+            opacity: 0; z-index: 50; pointer-events: none;
             transition: opacity 0.05s linear;
         }
 
-        /* 4. 底部调试监视器 (保持原样) */
-        #monitor {
-            position: fixed; bottom: 20px; left: 20px; z-index: 100;
-            background: rgba(0,0,0,0.8); color: #0f0; padding: 12px;
-            font-family: monospace; font-size: 11px; border-radius: 8px; pointer-events: none;
+        /* 仅文字区域遮罩 */
+        #local-mask {
+            position: absolute; inset: 0; background: #000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.05s linear;
         }
 
-        /* 5. 设置弹窗 */
+        /* 控制按钮 */
+        .top-ui { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
+        .btn { 
+            padding: 10px 16px; border-radius: 8px; border: 1px solid #ccc; 
+            background: rgba(255,255,255,0.9); font-weight: bold; cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        .btn-reset { background: var(--danger); color: #fff; border: none; }
+
+        /* 数据监视 */
+        #data-info {
+            position: fixed; bottom: 20px; left: 20px; z-index: 1000;
+            background: rgba(0,0,0,0.8); color: #0f0; padding: 10px;
+            font-family: monospace; font-size: 11px; border-radius: 6px; pointer-events: none;
+        }
+
+        /* 设置弹窗 */
         #modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
             z-index: 10001; justify-content: center; align-items: center;
         }
-        .modal-card {
-            background: white; padding: 25px; border-radius: 16px; width: 85%; max-width: 380px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .setting-row { margin-bottom: 15px; }
-        .setting-row label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; }
-        .input-row { display: flex; gap: 10px; align-items: center; }
-        input[type="text"], input[type="number"], select {
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;
-        }
-        
-        .modal-action-btn {
-            width: 100%; padding: 12px; background: var(--primary); color: white;
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
-        }
+        .modal-content { background: #fff; padding: 25px; border-radius: 16px; width: 85%; max-width: 360px; }
+        .form-item { margin-bottom: 15px; }
+        .form-item label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        textarea { height: 100px; resize: none; }
+        .save-btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="top-left-controls">
-        <button id="settings-btn" class="ctrl-btn" onclick="openModal()">⚙️ 设置参数</button>
-        <button id="reset-angle-btn" class="ctrl-btn save-btn" onclick="resetRotation()">↺ 重置偏转</button>
+    <div id="start-btn" onclick="activate()">
+        <h1>点击启动测试</h1>
+        <p>必须点击屏幕以激活传感器</p>
     </div>
 
-    <div id="stage">
-        <div id="card">
-            <div id="display-text">
-                <div id="scrolling-content">114514</div>
-            </div>
+    <div class="top-ui">
+        <button class="btn" onclick="showSet()">⚙️ 设置</button>
+        <button class="btn btn-reset" onclick="resetDeg()">↺ 重置偏转</button>
+    </div>
+
+    <div id="main-container">
+        <div id="text-box">
+            <div id="local-mask"></div>
+            <div id="content-render">114514</div>
         </div>
     </div>
 
-    <div id="mask-overlay"></div>
+    <div id="full-mask"></div>
 
-    <div id="monitor">
-        X: <span id="m-beta">0</span> | Y: <span id="m-gamma">0</span> | Z: <span id="m-alpha">0</span><hr>
-        <strong>合偏转角: <span id="m-total">0</span>° | 透明度: <span id="m-op">0</span>%</strong>
+    <div id="data-info">
+        合矢量: <span id="val-deg">0</span>° | 透明度: <span id="val-op">0</span>%
     </div>
 
-    <div id="modal" onclick="if(event.target==this) closeModal()">
-        <div class="modal-card">
-            <h3 style="margin-top:0">配置中心</h3>
-            
-            <div class="setting-row">
-                <label>显示文本（支持长文本自动换行与滚动）</label>
-                <input type="text" id="cfg-text" placeholder="输入显示的文字">
+    <div id="modal" onclick="if(event.target==this) hideSet()">
+        <div class="modal-content">
+            <h3 style="margin:0 0 15px 0">参数配置</h3>
+            <div class="form-item">
+                <label>显示内容（支持长文本滚动）</label>
+                <textarea id="ipt-text"></textarea>
             </div>
-
-            <div class="setting-row">
-                <label>开始变暗角度 (默认 10)</label>
-                <input type="number" id="cfg-start" placeholder="默认 10">
-            </div>
-
-            <div class="setting-row">
-                <label>全黑/饱和角度 (默认 25)</label>
-                <input type="number" id="cfg-full" placeholder="默认 25">
-            </div>
-            
-            <div class="setting-row">
-                <label>遮罩覆盖目标</label>
-                <select id="cfg-mask-target">
-                    <option value="full">全屏 (默认)</option>
-                    <option value="text">仅覆盖文字卡片区</option>
+            <div class="form-item">
+                <label>遮罩模式</label>
+                <select id="ipt-mode">
+                    <option value="full">全屏幕覆盖</option>
+                    <option value="local">仅文字区域覆盖</option>
                 </select>
             </div>
-
-            <button class="modal-action-btn" onclick="saveSettings()">应用参数并保存</button>
+            <div style="display:flex; gap:10px;">
+                <div class="form-item">
+                    <label>起算角度</label>
+                    <input type="number" id="ipt-start">
+                </div>
+                <div class="form-item">
+                    <label>全黑角度</label>
+                    <input type="number" id="ipt-full">
+                </div>
+            </div>
+            <button class="save-btn" onclick="save()">保存配置</button>
         </div>
     </div>
 
     <script>
-        // 核心参数：增加遮罩目标
-        let config = JSON.parse(localStorage.getItem('mega_gyro_cfg_v4')) || {
-            text: "114514",
+        let cfg = JSON.parse(localStorage.getItem('tly_v5_cfg')) || {
+            text: "这里是测试内容，你可以输入非常长的文字来测试自动换行和上下滚动的功能。当内容超过屏幕显示范围时，你可以像阅读器一样进行操作。",
             start: 10,
             full: 25,
-            maskTarget: 'full' // 默认全屏覆盖
+            mode: 'full'
         };
 
-        const maskOverlay = document.getElementById('mask-overlay');
-        const scrollingContent = document.getElementById('scrolling-content');
-        const card = document.getElementById('card');
-        
-        scrollingContent.innerText = config.text;
+        const fMask = document.getElementById('full-mask');
+        const lMask = document.getElementById('local-mask');
+        const render = document.getElementById('content-render');
 
-        // 传感器初始化逻辑
-        if (typeof DeviceOrientationEvent !== 'undefined') {
-            window.addEventListener('deviceorientation', handleOrientation, true);
-        } else {
-            alert("当前设备/浏览器环境不支持陀螺仪传感器");
+        function applyCfg() {
+            render.innerText = cfg.text;
         }
 
-        // 核心逻辑：处理合矢量计算和透明度应用
-        function handleOrientation(e) {
-            // Beta: 前后倾斜 (-180 到 180), Gamma: 左右倾斜 (-90 到 90)
-            const beta = e.beta || 0;
-            const gamma = e.gamma || 0;
-            const alpha = e.alpha || 0;
+        function activate() {
+            document.getElementById('start-btn').style.display = 'none';
+            if (typeof DeviceOrientationEvent !== 'undefined') {
+                window.addEventListener('deviceorientation', (e) => {
+                    const x = e.beta || 0;
+                    const y = e.gamma || 0;
+                    const total = Math.sqrt(x*x + y*y);
 
-            // 1. 计算合矢量偏转角度距离：向任何方向偏都会检测到
-            const totalDeg = Math.sqrt(beta * beta + gamma * gamma);
-            
-            // 2. 根据设置计算透明度
-            let opacity = 0;
-            if (totalDeg > config.start) {
-                opacity = (totalDeg - config.start) / (config.full - config.start);
+                    let op = 0;
+                    if (total > cfg.start) {
+                        op = (total - cfg.start) / (cfg.full - cfg.start);
+                    }
+                    op = Math.min(Math.max(op, 0), 1);
+
+                    // 根据模式应用遮罩
+                    if (cfg.mode === 'full') {
+                        fMask.style.opacity = op;
+                        lMask.style.opacity = 0;
+                    } else {
+                        lMask.style.opacity = op;
+                        fMask.style.opacity = 0;
+                    }
+
+                    document.getElementById('val-deg').innerText = total.toFixed(1);
+                    document.getElementById('val-op').innerText = (op * 100).toFixed(0);
+                }, true);
             }
-            opacity = Math.min(Math.max(opacity, 0), 1); // 限制在 0-1 之间
-
-            // 3. 执行应用：根据设置选择覆盖目标
-            if (config.maskTarget === 'text') {
-                // 如果是“仅文字区”，只设置卡片内部灰色遮罩（通过CSS过渡实现只覆盖文字）
-                // 此时全屏遮罩设为透明，卡片内部加一层灰色过渡
-                maskOverlay.style.opacity = 0;
-                card.style.transition = 'background-color 0.1s linear';
-                card.style.backgroundColor = `rgba(51, 51, 51, ${opacity})`;
-            } else {
-                // 默认“全屏”：卡片背景变回原样，全屏遮罩变灰
-                card.style.backgroundColor = 'transparent'; // 确保卡片不影响
-                card.style.background = 'var(--card-gradient)'; // 恢复卡片原背景色
-                maskOverlay.style.opacity = opacity;
-            }
-
-            // 4. 更新监控数据
-            document.getElementById('m-beta').innerText = beta.toFixed(1);
-            document.getElementById('m-gamma').innerText = gamma.toFixed(1);
-            document.getElementById('m-alpha').innerText = alpha.toFixed(1);
-            document.getElementById('m-total').innerText = totalDeg.toFixed(1);
-            document.getElementById('m-op').innerText = (opacity * 100).toFixed(0);
         }
 
-        // 新：重置偏转角度功能 (左上角按钮：核心新功能)
-        function resetRotation() {
-            // 这个按钮的主要作用是让用户在电脑端调试时重置偏转状态
-            // 在真实设备上，无法手动重置，通常通过逻辑补偿、让用户放平设备或重新对准来实现“置零”真实物理偏转。
-            // 这里的重置将把状态恢复到就像偏转角在“起算点”以内一样。
-            maskOverlay.style.opacity = 0;
-            if (config.maskTarget === 'text') {
-                card.style.backgroundColor = 'transparent';
-                card.style.background = 'var(--card-gradient)';
-            }
-            alert("已点击重置（在电脑端可用于清除模拟角度，手机端需要放平设备重新校准）");
+        function resetDeg() {
+            // 重置视觉效果（物理传感器通常无法软件清零，这里清除UI状态）
+            fMask.style.opacity = 0;
+            lMask.style.opacity = 0;
+            console.log("偏转视觉状态已重置");
         }
 
-        // 弹窗与设置逻辑
-        function openModal() {
+        function showSet() {
             document.getElementById('modal').style.display = 'flex';
-            document.getElementById('cfg-text').value = config.text;
-            document.getElementById('cfg-start').value = config.start;
-            document.getElementById('cfg-full').value = config.full;
-            document.getElementById('cfg-mask-target').value = config.maskTarget;
+            document.getElementById('ipt-text').value = cfg.text;
+            document.getElementById('ipt-mode').value = cfg.mode;
+            document.getElementById('ipt-start').value = cfg.start;
+            document.getElementById('ipt-full').value = cfg.full;
         }
 
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        function hideSet() { document.getElementById('modal').style.display = 'none'; }
 
-        function saveSettings() {
-            config.text = document.getElementById('cfg-text').value || "114514";
-            config.start = parseFloat(document.getElementById('cfg-start').value) || 10;
-            config.full = parseFloat(document.getElementById('cfg-full').value) || 25;
-            config.maskTarget = document.getElementById('cfg-mask-target').value;
+        function save() {
+            cfg.text = document.getElementById('ipt-text').value;
+            cfg.mode = document.getElementById('ipt-mode').value;
+            cfg.start = parseFloat(document.getElementById('ipt-start').value);
+            cfg.full = parseFloat(document.getElementById('ipt-full').value);
             
-            scrollingContent.innerText = config.text;
-            localStorage.setItem('mega_gyro_cfg_v4', JSON.stringify(config));
-            
-            closeModal();
-            alert("配置已应用并自动保存");
+            localStorage.setItem('tly_v5_cfg', JSON.stringify(cfg));
+            applyCfg();
+            hideSet();
         }
+
+        applyCfg();
     </script>
 </body>
 </html>
