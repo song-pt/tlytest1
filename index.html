@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>陀螺仪全向遮罩测试</title>
+    <style>
+        :root { --primary: #007AFF; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: system-ui; }
+
+        /* 必须的启动层 */
+        #start-mask {
+            position: fixed; inset: 0; background: #000; color: #fff;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10000; cursor: pointer; text-align: center;
+        }
+
+        /* 文字层 */
+        #text-layer { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; z-index: 1; }
+        #display-text { font-size: 14vw; font-weight: 900; color: #111; text-align: center; word-break: break-all; padding: 20px; }
+
+        /* 灰色遮罩 */
+        #mask-overlay {
+            position: absolute; inset: 0; background-color: #333;
+            opacity: 0; z-index: 5; pointer-events: none;
+            transition: opacity 0.05s linear;
+        }
+
+        /* UI按钮 */
+        #settings-btn {
+            position: fixed; top: 20px; left: 20px; z-index: 100;
+            padding: 10px 18px; background: rgba(255,255,255,0.9);
+            border: 1px solid #ccc; border-radius: 8px; font-weight: bold;
+        }
+
+        /* 状态监控 */
+        #monitor {
+            position: fixed; bottom: 20px; left: 20px; z-index: 100;
+            background: rgba(0,0,0,0.8); color: #0f0; padding: 10px;
+            font-family: monospace; font-size: 12px; border-radius: 8px;
+        }
+
+        /* 配置弹窗 */
+        #modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            z-index: 10001; justify-content: center; align-items: center;
+        }
+        .modal-content { background: white; padding: 25px; border-radius: 16px; width: 85%; max-width: 350px; }
+        .row { margin-bottom: 15px; }
+        .row label { display: block; font-size: 13px; margin-bottom: 5px; color: #666; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .save-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="start-mask" onclick="init()">
+        <h1>点击此处启动测试</h1>
+        <p>（激活传感器权限）</p>
+    </div>
+
+    <div id="text-layer"><div id="display-text">114514</div></div>
+    <div id="mask-overlay"></div>
+
+    <button id="settings-btn" onclick="openModal()">⚙️ 设置</button>
+
+    <div id="monitor">
+        合矢量: <span id="m-deg">0</span>° | 透明度: <span id="m-op">0</span>%
+    </div>
+
+    <div id="modal" onclick="if(event.target==this) closeModal()">
+        <div class="modal-content">
+            <h3 style="margin:0 0 15px 0">参数配置</h3>
+            <div class="row">
+                <label>文本内容</label>
+                <input type="text" id="cfg-text">
+            </div>
+            <div class="row">
+                <label>开始变暗角度 (默认 10)</label>
+                <input type="number" id="cfg-start">
+            </div>
+            <div class="row">
+                <label>全黑角度 (默认 25)</label>
+                <input type="number" id="cfg-full">
+            </div>
+            <button class="save-btn" onclick="save()">应用并保存</button>
+        </div>
+    </div>
+
+    <script>
+        let config = JSON.parse(localStorage.getItem('final_gyro_cfg')) || {
+            text: "114514", start: 10, full: 25
+        };
+
+        const mask = document.getElementById('mask-overlay');
+        const dText = document.getElementById('display-text');
+        dText.innerText = config.text;
+
+        function init() {
+            document.getElementById('start-mask').style.display = 'none';
+            if (typeof DeviceOrientationEvent !== 'undefined') {
+                window.addEventListener('deviceorientation', handle, true);
+            } else {
+                alert("当前环境不支持陀螺仪");
+            }
+        }
+
+        function handle(e) {
+            const x = e.beta || 0;
+            const y = e.gamma || 0;
+            // 计算合矢量距离（勾股定理），确保向任何方向倾斜都能触发
+            const deg = Math.sqrt(x*x + y*y);
+            
+            let op = 0;
+            if (deg > config.start) {
+                op = (deg - config.start) / (config.full - config.start);
+            }
+            op = Math.min(Math.max(op, 0), 1);
+
+            mask.style.opacity = op;
+            document.getElementById('m-deg').innerText = deg.toFixed(1);
+            document.getElementById('m-op').innerText = (op * 100).toFixed(0);
+        }
+
+        function openModal() {
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('cfg-text').value = config.text;
+            document.getElementById('cfg-start').value = config.start;
+            document.getElementById('cfg-full').value = config.full;
+        }
+
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        function save() {
+            config.text = document.getElementById('cfg-text').value || "114514";
+            config.start = parseFloat(document.getElementById('cfg-start').value) || 10;
+            config.full = parseFloat(document.getElementById('cfg-full').value) || 25;
+            dText.innerText = config.text;
+            localStorage.setItem('final_gyro_cfg', JSON.stringify(config));
+            closeModal();
+        }
+    </script>
+</body>
+</html>
