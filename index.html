@@ -3,218 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陀螺仪精准行遮罩测试</title>
+    <title>陀螺仪遮罩 - 综合调试版</title>
     <style>
         :root { --primary: #007AFF; --danger: #ff3b30; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: sans-serif; }
 
-        /* 启动遮罩 */
+        /* 启动层 */
         #start-btn { 
             position: fixed; inset: 0; background: #000; color: #fff; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 10000; cursor: pointer;
+            z-index: 2000000; cursor: pointer;
         }
 
-        /* 阅读器容器 */
-        #scroll-box {
+        /* 内容舞台 */
+        #stage {
             position: absolute; inset: 0; 
-            padding: 100px 25px 120px 25px; 
-            overflow-y: auto; z-index: 1;
-            -webkit-overflow-scrolling: touch;
+            display: flex; justify-content: center; align-items: center;
+            padding: 80px 20px; z-index: 1;
         }
 
-        /* 文字容器：核心在于 inline 样式 */
-        #text-container {
-            font-size: 26px; line-height: 1.8; font-weight: 700;
-            word-wrap: break-word; overflow-wrap: break-word;
-            text-align: justify; color: #111;
+        .content-item {
+            width: 100%; height: 100%; display: none; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee;
         }
 
-        /* 核心：行遮罩样式 */
+        #scroll-box { width: 100%; height: 100%; overflow-y: auto; text-align: justify; }
         #text-span {
-            padding: 2px 0;
-            /* 允许背景在换行时断开，形成每行独立的矩形感 */
-            box-decoration-break: clone;
-            -webkit-box-decoration-break: clone;
-            transition: background-color 0.05s linear;
+            font-size: 26px; line-height: 1.6; font-weight: 700; color: #111;
+            box-decoration-break: clone; -webkit-box-decoration-break: clone;
+            transition: background-color 0.05s linear, box-shadow 0.05s linear;
         }
 
-        /* 全屏模式黑色层 */
-        #full-screen-mask {
+        /* 黑色遮罩层 - 最高级 */
+        #black-mask {
             position: fixed; inset: 0; background: #000; 
-            opacity: 0; z-index: 50; pointer-events: none;
+            opacity: 0; z-index: 1000000; pointer-events: none;
         }
 
-        /* 顶部 UI */
-        .ui-header { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
+        /* UI 交互层 */
+        .ui-header { position: fixed; top: 15px; left: 15px; z-index: 1000001; display: flex; gap: 10px; }
         .btn { 
-            padding: 12px 18px; border-radius: 10px; border: 1px solid #ddd; 
-            background: rgba(255,255,255,0.9); font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); backdrop-filter: blur(4px);
+            padding: 10px 20px; border-radius: 10px; border: 1px solid #ddd; 
+            background: rgba(255,255,255,0.95); font-weight: bold; cursor: pointer;
+            backdrop-filter: blur(5px); box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .btn-reset { background: var(--danger); color: #fff; border: none; }
 
-        /* 底部监控 */
-        #debug-panel {
-            position: fixed; bottom: 20px; left: 20px; z-index: 1000;
+        /* 调试监视器 - 默认隐藏 */
+        #debug-monitor {
+            display: none; position: fixed; bottom: 15px; left: 15px; z-index: 1000001;
             background: rgba(0,0,0,0.85); color: #0f0; padding: 12px;
-            font-family: monospace; font-size: 13px; border-radius: 8px;
+            font-family: monospace; font-size: 11px; border-radius: 8px; line-height: 1.5;
         }
 
-        /* 弹窗 */
+        /* 设置弹窗 */
         #modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            z-index: 20000; justify-content: center; align-items: center;
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+            z-index: 3000000; justify-content: center; align-items: center;
         }
-        .modal-body { background: #fff; padding: 25px; border-radius: 15px; width: 85%; max-width: 360px; }
-        .field { margin-bottom: 15px; }
-        label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
-        textarea, select, input { width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: #f9f9f9; }
-        .save-btn { width: 100%; padding: 15px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; }
+        .modal-inner { 
+            background: #fff; padding: 20px; border-radius: 20px; width: 90%; max-width: 420px; 
+            max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .group { margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
+        .group label { display: block; font-size: 11px; color: #888; margin-bottom: 6px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
+        
+        .switch-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+        .switch-row input { width: auto; }
+
+        .save-btn { width: 100%; padding: 15px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-weight: bold; margin-top: 10px; font-size: 16px; }
     </style>
 </head>
 <body>
 
     <div id="start-btn" onclick="startApp()">
-        <h1>点击开始测试</h1>
-        <p>已针对 Android Chromium 优化</p>
+        <h1>点击激活系统</h1>
+        <p>支持 网页/视频/长文本 遮盖测试</p>
     </div>
 
     <div class="ui-header">
-        <button class="btn" onclick="openSettings()">⚙️ 设置</button>
-        <button class="btn btn-reset" onclick="doCalibrate()">↺ 重置偏转</button>
+        <button class="btn" onclick="openModal()">⚙️ 设置</button>
+        <button class="btn btn-reset" onclick="calibrate()">↺ 重置偏转</button>
     </div>
 
-    <div id="scroll-box">
-        <div id="text-container">
-            <span id="text-span">114514</span>
+    <div id="stage">
+        <video id="v-player" class="content-item" controls playsinline></video>
+        <iframe id="w-frame" class="content-item" frameborder="0"></iframe>
+        <div id="scroll-box">
+            <span id="text-span"></span>
         </div>
     </div>
 
-    <div id="full-screen-mask"></div>
+    <div id="black-mask"></div>
 
-    <div id="debug-panel">
-        物理 X: <span id="raw-x">0</span> | Y: <span id="raw-y">0</span><br>
-        相对偏转: <span id="cur-deg">0.0</span>°<br>
-        黑化程度: <span id="cur-op">0</span>%
+    <div id="debug-monitor">
+        [调试模式]<br>
+        当前偏转: <span id="d-deg">0.0</span>°<br>
+        遮罩程度: <span id="d-op">0</span>%<br>
+        物理: <span id="d-raw">0/0/0</span>
     </div>
 
-    <div id="modal" onclick="if(event.target==this) closeSettings()">
-        <div class="modal-body">
-            <h3 style="margin:0 0 15px 0">测试参数设置</h3>
-            <div class="field">
-                <label>测试文本（自动换行/可滚动）</label>
-                <textarea id="set-text" rows="4"></textarea>
+    <div id="modal" onclick="if(event.target==this) closeModal()">
+        <div class="modal-inner">
+            <h3 style="margin:0 0 15px 0; text-align:center;">系统配置</h3>
+            
+            <div class="group">
+                <label>文本内容 (阅读器模式)</label>
+                <textarea id="set-text" rows="3"></textarea>
             </div>
-            <div class="field">
-                <label>黑块模式</label>
-                <select id="set-mode">
-                    <option value="text">仅覆盖有字区域 (行矩形模式)</option>
-                    <option value="full">覆盖全屏幕</option>
-                </select>
+
+            <div class="group">
+                <label>网页嵌入链接 (URL)</label>
+                <input type="text" id="set-web" placeholder="例如: https://m.bing.com">
             </div>
-            <div style="display:flex; gap:10px;" class="field">
+
+            <div class="group">
+                <label>视频源 (本地上传 或 粘贴链接)</label>
+                <input type="file" accept="video/*" onchange="uploadVid(this)">
+                <input type="text" id="set-vid" style="margin-top:8px;" placeholder="粘贴视频 MP4 链接">
+            </div>
+
+            <div class="group" style="display:flex; gap:10px;">
                 <div><label>起算角度</label><input type="number" id="set-start"></div>
                 <div><label>全黑角度</label><input type="number" id="set-full"></div>
             </div>
-            <button class="save-btn" onclick="saveSettings()">应用并保存</button>
+
+            <div class="group">
+                <label>遮罩逻辑 (媒体模式下强制全屏)</label>
+                <select id="set-mode">
+                    <option value="text">文字行块模式</option>
+                    <option value="full">全屏幕模式</option>
+                </select>
+                <div class="switch-row">
+                    <input type="checkbox" id="set-debug">
+                    <span style="font-size:13px;">开启调试监控面板</span>
+                </div>
+            </div>
+
+            <button class="save-btn" onclick="apply()">保存并应用</button>
+            <button class="btn" style="width:100%; margin-top:8px; border:none; background:#eee;" onclick="clearStage()">清除所有媒体内容</button>
         </div>
     </div>
 
     <script>
-        let config = JSON.parse(localStorage.getItem('tly_v8_final')) || {
-            text: "这里是行遮罩测试。在‘仅覆盖有字区域’模式下，你会看到每一行文字都有一个独立的黑色背景矩形在逐渐显现。这些矩形的长度完全跟随文字长度，形成了不规则的边缘效果。即使文本很长，你也可以上下滑动阅读。",
-            mode: 'text',
-            start: 10,
-            full: 30
+        let cfg = JSON.parse(localStorage.getItem('tly_v12_final')) || {
+            text: "这里是默认测试文本。你可以在设置里：\n1. 上传本地视频进行涂黑测试；\n2. 嵌入其他网页小窗；\n3. 这里的文字支持自动换行且行间距无缝涂黑。",
+            start: 10, full: 25, mode: 'text', debug: false
         };
 
-        // 传感器坐标系统
-        let sensor = { x: 0, y: 0 };
-        let zeroPoint = { x: 0, y: 0 };
+        let cur = { a:0, b:0, g:0 }, zero = { a:0, b:0, g:0 };
+        let activeType = 'none';
 
-        const span = document.getElementById('text-span');
-        const fMask = document.getElementById('full-screen-mask');
+        const vP = document.getElementById('v-player');
+        const wF = document.getElementById('w-frame');
+        const tS = document.getElementById('text-span');
+        const sB = document.getElementById('scroll-box');
+        const bM = document.getElementById('black-mask');
+        const mon = document.getElementById('debug-monitor');
 
         function startApp() {
             document.getElementById('start-btn').style.display = 'none';
             if (window.DeviceOrientationEvent) {
                 window.addEventListener('deviceorientation', (e) => {
-                    sensor.x = e.beta || 0;
-                    sensor.y = e.gamma || 0;
-                    process();
+                    cur.a = e.alpha || 0; cur.b = e.beta || 0; cur.g = e.gamma || 0;
+                    render();
                 }, true);
+            }
+            refreshView();
+        }
+
+        function render() {
+            let da = cur.a - zero.a;
+            if (da > 180) da -= 360; if (da < -180) da += 360;
+            const dist = Math.sqrt(da*da*0.1 + (cur.b-zero.b)**2 + (cur.g-zero.g)**2);
+
+            let op = 0;
+            if (dist > cfg.start) op = (dist - cfg.start) / (cfg.full - cfg.start);
+            op = Math.max(0, Math.min(1, op));
+
+            const black = `rgba(0, 0, 0, ${op})`;
+
+            // 逻辑应用
+            if (activeType !== 'none' || cfg.mode === 'full') {
+                bM.style.opacity = op;
+                tS.style.backgroundColor = 'transparent';
+                tS.style.boxShadow = 'none';
             } else {
-                alert("抱歉，您的设备不支持陀螺仪");
+                bM.style.opacity = 0;
+                tS.style.backgroundColor = black;
+                // 深度填补行间距
+                tS.style.boxShadow = `0 5px 0 ${black}, 0 -5px 0 ${black}`;
+                tS.style.color = op > 0.9 ? '#000' : '#111';
+            }
+
+            // 调试信息更新
+            if (cfg.debug) {
+                document.getElementById('d-deg').innerText = dist.toFixed(1);
+                document.getElementById('d-op').innerText = (op * 100).toFixed(0);
+                document.getElementById('d-raw').innerText = `${cur.a.toFixed(0)}/${cur.b.toFixed(0)}/${cur.g.toFixed(0)}`;
             }
         }
 
-        function process() {
-            // 1. 计算相对于重置点的绝对偏移量
-            const dx = sensor.x - zeroPoint.x;
-            const dy = sensor.y - zeroPoint.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-
-            // 2. 计算透明度百分比 (0 到 1)
-            let opacity = 0;
-            if (dist > config.start) {
-                opacity = (dist - config.start) / (config.full - config.start);
-            }
-            // 严格限速，防止回弹
-            opacity = Math.max(0, Math.min(1, opacity));
-
-            // 3. 应用视觉效果
-            if (config.mode === 'full') {
-                fMask.style.opacity = opacity;
-                span.style.backgroundColor = 'transparent';
-            } else {
-                fMask.style.opacity = 0;
-                // 仅覆盖有字的地方：改变 span 的背景色
-                span.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
-                // 为了让文字在变黑后彻底看不见，也可以微调文字颜色
-                if(opacity > 0.8) span.style.color = `rgba(0,0,0,${opacity})`;
-                else span.style.color = '#111';
-            }
-
-            // 4. 更新监控面板
-            document.getElementById('raw-x').innerText = sensor.x.toFixed(0);
-            document.getElementById('raw-y').innerText = sensor.y.toFixed(0);
-            document.getElementById('cur-deg').innerText = dist.toFixed(1);
-            document.getElementById('cur-op').innerText = (opacity * 100).toFixed(0);
+        function refreshView() {
+            mon.style.display = cfg.debug ? 'block' : 'none';
+            tS.innerText = cfg.text;
         }
 
-        // 核心修复：真正的物理对准重置
-        function doCalibrate() {
-            zeroPoint.x = sensor.x;
-            zeroPoint.y = sensor.y;
-            process();
-            // 简单的震动反馈（如果设备支持）
-            if(navigator.vibrate) navigator.vibrate(50);
+        function uploadVid(ipt) {
+            if (ipt.files[0]) {
+                activeType = 'video';
+                vP.src = URL.createObjectURL(ipt.files[0]);
+                updateStage();
+            }
         }
 
-        function openSettings() {
+        function updateStage() {
+            vP.style.display = activeType === 'video' ? 'block' : 'none';
+            wF.style.display = activeType === 'web' ? 'block' : 'none';
+            sB.style.display = activeType === 'none' ? 'block' : 'none';
+            if (activeType === 'video') vP.play().catch(()=>{});
+            render();
+        }
+
+        function clearStage() {
+            activeType = 'none';
+            vP.src = ""; wF.src = "";
+            updateStage();
+            closeModal();
+        }
+
+        function calibrate() {
+            zero = { ...cur };
+            render();
+        }
+
+        function openModal() {
             document.getElementById('modal').style.display = 'flex';
-            document.getElementById('set-text').value = config.text;
-            document.getElementById('set-mode').value = config.mode;
-            document.getElementById('set-start').value = config.start;
-            document.getElementById('set-full').value = config.full;
+            document.getElementById('set-text').value = cfg.text;
+            document.getElementById('set-start').value = cfg.start;
+            document.getElementById('set-full').value = cfg.full;
+            document.getElementById('set-mode').value = cfg.mode;
+            document.getElementById('set-debug').checked = cfg.debug;
         }
 
-        function closeSettings() { document.getElementById('modal').style.display = 'none'; }
+        function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
-        function saveSettings() {
-            config.text = document.getElementById('set-text').value;
-            config.mode = document.getElementById('set-mode').value;
-            config.start = parseFloat(document.getElementById('set-start').value);
-            config.full = parseFloat(document.getElementById('set-full').value);
-            localStorage.setItem('tly_v8_final', JSON.stringify(config));
-            span.innerText = config.text;
-            process();
-            closeSettings();
+        function apply() {
+            cfg.text = document.getElementById('set-text').value;
+            cfg.start = parseFloat(document.getElementById('set-start').value) || 10;
+            cfg.full = parseFloat(document.getElementById('set-full').value) || 25;
+            cfg.mode = document.getElementById('set-mode').value;
+            cfg.debug = document.getElementById('set-debug').checked;
+
+            const webUrl = document.getElementById('set-web').value;
+            const vidUrl = document.getElementById('set-vid').value;
+
+            if (webUrl) { activeType = 'web'; wF.src = webUrl; }
+            else if (vidUrl) { activeType = 'video'; vP.src = vidUrl; }
+
+            localStorage.setItem('tly_v12_final', JSON.stringify(cfg));
+            refreshView();
+            updateStage();
+            closeModal();
         }
-
-        // 初始化显示内容
-        span.innerText = config.text;
     </script>
 </body>
 </html>
