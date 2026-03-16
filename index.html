@@ -3,221 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陀螺仪精准遮罩测试</title>
+    <title>陀螺仪遮罩 - 修复版</title>
     <style>
         :root { --primary: #007AFF; --danger: #ff3b30; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: system-ui, sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: sans-serif; }
 
-        /* 初始激活层 */
+        /* 启动遮罩 */
         #start-btn { 
             position: fixed; inset: 0; background: #000; color: #fff; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 9999; cursor: pointer;
+            z-index: 10000; cursor: pointer;
         }
 
-        /* 阅读器容器 */
-        #reader-container {
-            position: absolute; inset: 0; display: flex; justify-content: center;
-            padding: 80px 20px 100px 20px; overflow-y: auto; z-index: 1;
+        /* 阅读器：强制换行+自动滚动 */
+        #scroll-box {
+            position: absolute; inset: 0; 
+            padding: 100px 20px 120px 20px; 
+            overflow-y: auto; z-index: 1;
         }
 
-        /* 核心：文字渲染区域 */
-        #text-content {
-            font-size: 28px; line-height: 1.6; font-weight: 700;
+        /* 文字内容：默认浅色以便观察黑化过程 */
+        #text-target {
+            font-size: 26px; line-height: 1.6; font-weight: 800;
             word-wrap: break-word; overflow-wrap: break-word;
-            text-align: justify; color: #333; /* 默认文字颜色 */
-            transition: color 0.05s linear;
+            text-align: justify; color: #ccc; /* 初始浅色 */
+            transition: color 0.1s linear;
         }
 
-        /* “文字模式”下的特殊样式：利用背景裁剪实现不规则遮罩 */
-        .mask-mode-text {
-            background: linear-gradient(#000, #000) no-repeat;
-            background-size: 100% 100%;
-            background-clip: text;
-            -webkit-background-clip: text;
-            /* 这里的 color 会控制文字原本的可见度，遮罩则是黑色 */
-        }
-
-        /* 全屏黑色遮罩 */
-        #full-screen-mask {
+        /* 全屏黑色层 */
+        #full-black-layer {
             position: fixed; inset: 0; background: #000; 
             opacity: 0; z-index: 50; pointer-events: none;
-            transition: opacity 0.05s linear;
         }
 
-        /* UI 控制区 */
-        .top-ui { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
+        /* 顶部 UI */
+        .ui-top { position: fixed; top: 20px; left: 20px; z-index: 1000; display: flex; gap: 10px; }
         .btn { 
-            padding: 10px 16px; border-radius: 8px; border: 1px solid #ccc; 
-            background: rgba(255,255,255,0.9); font-weight: bold; cursor: pointer;
-            backdrop-filter: blur(4px); box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 12px 20px; border-radius: 10px; border: 1px solid #ddd; 
+            background: rgba(255,255,255,0.95); font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
         .btn-reset { background: var(--danger); color: #fff; border: none; }
 
-        /* 数据监视 */
+        /* 底部数据 */
         #monitor {
             position: fixed; bottom: 20px; left: 20px; z-index: 1000;
-            background: rgba(0,0,0,0.8); color: #0f0; padding: 10px;
-            font-family: monospace; font-size: 11px; border-radius: 6px;
+            background: rgba(0,0,0,0.85); color: #0f0; padding: 12px;
+            font-family: monospace; font-size: 13px; border-radius: 8px;
         }
 
         /* 弹窗 */
         #modal {
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            z-index: 10001; justify-content: center; align-items: center;
+            z-index: 20000; justify-content: center; align-items: center;
         }
-        .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 85%; max-width: 350px; }
-        .row { margin-bottom: 12px; }
-        .row label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
-        textarea, select, input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        textarea { height: 80px; }
-        .save-btn { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .modal-inner { background: #fff; padding: 25px; border-radius: 15px; width: 85%; max-width: 350px; }
+        .row { margin-bottom: 15px; }
+        textarea, select, input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .save-btn { width: 100%; padding: 15px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="start-btn" onclick="activate()">
-        <h2>点击开始测试</h2>
-        <p>需要交互以启用陀螺仪</p>
+    <div id="start-btn" onclick="init()">
+        <h1>点击启动测试</h1>
+        <p>启用陀螺仪权限</p>
     </div>
 
-    <div class="top-ui">
-        <button class="btn" onclick="showModal()">⚙️ 设置</button>
-        <button class="btn btn-reset" onclick="calibrate()">↺ 重置偏转</button>
+    <div class="ui-top">
+        <button class="btn" onclick="openCfg()">⚙️ 设置</button>
+        <button class="btn btn-reset" onclick="reCalibrate()">↺ 重置偏转</button>
     </div>
 
-    <div id="reader-container">
-        <div id="text-content">114514</div>
+    <div id="scroll-box">
+        <div id="text-target">114514</div>
     </div>
 
-    <div id="full-screen-mask"></div>
+    <div id="full-black-layer"></div>
 
     <div id="monitor">
-        校准偏转: <span id="val-deg">0</span>°<br>
-        不透明度: <span id="val-op">0</span>%
+        状态: <span id="m-status">就绪</span><br>
+        相对偏转: <span id="m-deg">0.0</span>°<br>
+        不透明度: <span id="m-op">0</span>%
     </div>
 
-    <div id="modal" onclick="if(event.target==this) hideModal()">
-        <div class="modal-content">
-            <h3 style="margin-top:0">配置</h3>
+    <div id="modal" onclick="if(event.target==this) closeCfg()">
+        <div class="modal-inner">
+            <h3 style="margin:0 0 15px 0">测试配置</h3>
             <div class="row">
-                <label>文本内容</label>
-                <textarea id="ipt-text"></textarea>
+                <label style="font-size:12px; color:#666;">测试文本</label>
+                <textarea id="in-text" rows="4"></textarea>
             </div>
             <div class="row">
-                <label>遮罩模式</label>
-                <select id="ipt-mode">
-                    <option value="full">全屏幕覆盖（整体黑屏）</option>
-                    <option value="text">文字区域覆盖（仅文字变黑）</option>
+                <label style="font-size:12px; color:#666;">遮罩模式</label>
+                <select id="in-mode">
+                    <option value="text">仅覆盖文字模式 (文字变黑)</option>
+                    <option value="full">全屏幕覆盖模式 (全屏变黑)</option>
                 </select>
             </div>
-            <div style="display:flex; gap:10px;">
-                <div class="row">
-                    <label>起算角</label>
-                    <input type="number" id="ipt-start">
-                </div>
-                <div class="row">
-                    <label>全黑角</label>
-                    <input type="number" id="ipt-full">
-                </div>
+            <div style="display:flex; gap:10px;" class="row">
+                <div><label style="font-size:11px;">起算角度</label><input type="number" id="in-start"></div>
+                <div><label style="font-size:11px;">饱和角度</label><input type="number" id="in-full"></div>
             </div>
             <button class="save-btn" onclick="save()">保存并应用</button>
         </div>
     </div>
 
     <script>
-        let cfg = JSON.parse(localStorage.getItem('gyro_final_v6')) || {
-            text: "这里是测试内容。如果切换到‘文字区域覆盖’，你会发现背景保持白色，只有这些文字本身会随着手机旋转而变黑，就像文字被涂抹了一样。这实现了你要求的不规则图形遮罩。",
+        let cfg = JSON.parse(localStorage.getItem('tly_v7_final')) || {
+            text: "这里是测试文字。在‘仅覆盖文字’模式下，当你旋转手机，文字会从浅灰色逐渐变成深黑色，背景保持纯白。如果文字非常多，你可以上下滑动阅读。",
             mode: 'text',
             start: 10,
-            full: 25
+            full: 30
         };
 
-        // 核心校准数据
-        let offset = { x: 0, y: 0 };
-        let currentRaw = { x: 0, y: 0 };
+        // 核心坐标数据
+        let currentAngles = { x: 0, y: 0 };
+        let baseAngles = { x: 0, y: 0 };
 
-        const textEl = document.getElementById('text-content');
-        const fMask = document.getElementById('full-screen-mask');
+        const target = document.getElementById('text-target');
+        const fLayer = document.getElementById('full-black-layer');
 
-        function updateUI() {
-            textEl.innerText = cfg.text;
-            // 如果是文字模式，应用特殊类
-            if(cfg.mode === 'text') {
-                textEl.classList.add('mask-mode-text');
-                fMask.style.opacity = 0;
-            } else {
-                textEl.classList.remove('mask-mode-text');
-                textEl.style.color = '#333';
-            }
-        }
-
-        function activate() {
+        function init() {
             document.getElementById('start-btn').style.display = 'none';
             if (window.DeviceOrientationEvent) {
                 window.addEventListener('deviceorientation', (e) => {
-                    currentRaw.x = e.beta || 0;
-                    currentRaw.y = e.gamma || 0;
+                    currentAngles.x = e.beta || 0;
+                    currentAngles.y = e.gamma || 0;
                     render();
                 }, true);
+                document.getElementById('m-status').innerText = "运行中";
+            } else {
+                alert("硬件不支持传感器");
             }
         }
 
-        // 核心计算与渲染
         function render() {
-            // 计算相对于校准点的偏转
-            const dx = currentRaw.x - offset.x;
-            const dy = currentRaw.y - offset.y;
-            const deg = Math.sqrt(dx*dx + dy*dy);
+            // 计算相对于基准点的偏移
+            const dx = currentAngles.x - baseAngles.x;
+            const dy = currentAngles.y - baseAngles.y;
+            const totalDeg = Math.sqrt(dx*dx + dy*dy);
 
+            // 计算透明度权重
             let op = 0;
-            if (deg > cfg.start) {
-                op = (deg - cfg.start) / (cfg.full - cfg.start);
+            if (totalDeg > cfg.start) {
+                op = (totalDeg - cfg.start) / (cfg.full - cfg.start);
             }
             op = Math.min(Math.max(op, 0), 1);
 
+            // 应用遮罩逻辑
             if (cfg.mode === 'full') {
-                fMask.style.opacity = op;
+                fLayer.style.opacity = op;
+                target.style.color = '#ccc'; // 全屏模式下文字恢复浅色
             } else {
-                // 文字模式：通过改变文字颜色透明度，让底部的黑色背景（background-clip）显现
-                // 文字原本颜色逐渐透明，黑色背景就露出来了
-                textEl.style.color = `rgba(51, 51, 51, ${1 - op})`;
+                fLayer.style.opacity = 0;
+                // 文字模式核心：颜色插值 (从浅灰 204 到 纯黑 0)
+                const colorVal = Math.floor(204 * (1 - op));
+                target.style.color = `rgb(${colorVal}, ${colorVal}, ${colorVal})`;
             }
 
-            document.getElementById('val-deg').innerText = deg.toFixed(1);
-            document.getElementById('val-op').innerText = (op * 100).toFixed(0);
+            // 更新监控
+            document.getElementById('m-deg').innerText = totalDeg.toFixed(1);
+            document.getElementById('m-op').innerText = (op * 100).toFixed(0);
         }
 
-        // 修复重置 Bug：真正的校准逻辑
-        function calibrate() {
-            offset.x = currentRaw.x;
-            offset.y = currentRaw.y;
-            render(); // 立即刷新
-            console.log("校准完成，当前角度设为 0");
+        // 彻底修复重置功能：重设基准零点
+        function reCalibrate() {
+            baseAngles.x = currentAngles.x;
+            baseAngles.y = currentAngles.y;
+            render();
+            console.log("已将当前姿态设为零点");
         }
 
-        function showModal() {
+        function openCfg() {
             document.getElementById('modal').style.display = 'flex';
-            document.getElementById('ipt-text').value = cfg.text;
-            document.getElementById('ipt-mode').value = cfg.mode;
-            document.getElementById('ipt-start').value = cfg.start;
-            document.getElementById('ipt-full').value = cfg.full;
+            document.getElementById('in-text').value = cfg.text;
+            document.getElementById('in-mode').value = cfg.mode;
+            document.getElementById('in-start').value = cfg.start;
+            document.getElementById('in-full').value = cfg.full;
         }
 
-        function hideModal() { document.getElementById('modal').style.display = 'none'; }
+        function closeCfg() { document.getElementById('modal').style.display = 'none'; }
 
         function save() {
-            cfg.text = document.getElementById('ipt-text').value;
-            cfg.mode = document.getElementById('ipt-mode').value;
-            cfg.start = parseFloat(document.getElementById('ipt-start').value);
-            cfg.full = parseFloat(document.getElementById('ipt-full').value);
-            localStorage.setItem('gyro_final_v6', JSON.stringify(cfg));
-            updateUI();
+            cfg.text = document.getElementById('in-text').value;
+            cfg.mode = document.getElementById('in-mode').value;
+            cfg.start = parseFloat(document.getElementById('in-start').value);
+            cfg.full = parseFloat(document.getElementById('in-full').value);
+            localStorage.setItem('tly_v7_final', JSON.stringify(cfg));
+            target.innerText = cfg.text;
             render();
-            hideModal();
+            closeCfg();
         }
 
-        updateUI();
+        // 初始化显示
+        target.innerText = cfg.text;
     </script>
 </body>
 </html>
