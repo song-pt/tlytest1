@@ -3,270 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陀螺仪遮罩 - 综合调试版</title>
+    <title>陀螺仪全能遮罩 - 终极修复版</title>
     <style>
         :root { --primary: #007AFF; --danger: #ff3b30; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; font-family: -apple-system, sans-serif; }
 
-        /* 启动层 */
+        /* 启动授权层 */
         #start-btn { 
             position: fixed; inset: 0; background: #000; color: #fff; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 2000000; cursor: pointer;
+            z-index: 2000000; cursor: pointer; text-align: center;
         }
 
-        /* 内容舞台 */
-        #stage {
-            position: absolute; inset: 0; 
-            display: flex; justify-content: center; align-items: center;
-            padding: 80px 20px; z-index: 1;
-        }
+        #stage { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; padding: 80px 20px; z-index: 1; }
+        .content-item { width: 100%; height: 100%; display: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee; }
+        #scroll-box { width: 100%; height: 100%; overflow-y: auto; }
+        #text-span { font-size: 26px; line-height: 1.6; font-weight: 700; color: #111; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background-color 0.05s linear, box-shadow 0.05s linear; }
 
-        .content-item {
-            width: 100%; height: 100%; display: none; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #eee;
-        }
+        #black-mask { position: fixed; inset: 0; background: #000; opacity: 0; z-index: 1000000; pointer-events: none; }
 
-        #scroll-box { width: 100%; height: 100%; overflow-y: auto; text-align: justify; }
-        #text-span {
-            font-size: 26px; line-height: 1.6; font-weight: 700; color: #111;
-            box-decoration-break: clone; -webkit-box-decoration-break: clone;
-            transition: background-color 0.05s linear, box-shadow 0.05s linear;
-        }
-
-        /* 黑色遮罩层 - 最高级 */
-        #black-mask {
-            position: fixed; inset: 0; background: #000; 
-            opacity: 0; z-index: 1000000; pointer-events: none;
-        }
-
-        /* UI 交互层 */
         .ui-header { position: fixed; top: 15px; left: 15px; z-index: 1000001; display: flex; gap: 10px; }
-        .btn { 
-            padding: 10px 20px; border-radius: 10px; border: 1px solid #ddd; 
-            background: rgba(255,255,255,0.95); font-weight: bold; cursor: pointer;
-            backdrop-filter: blur(5px); box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+        .btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #ddd; background: rgba(255,255,255,0.95); font-weight: bold; cursor: pointer; backdrop-filter: blur(5px); }
         .btn-reset { background: var(--danger); color: #fff; border: none; }
 
-        /* 调试监视器 - 默认隐藏 */
-        #debug-monitor {
-            display: none; position: fixed; bottom: 15px; left: 15px; z-index: 1000001;
-            background: rgba(0,0,0,0.85); color: #0f0; padding: 12px;
-            font-family: monospace; font-size: 11px; border-radius: 8px; line-height: 1.5;
-        }
+        #monitor { display: none; position: fixed; bottom: 15px; left: 15px; z-index: 1000001; background: rgba(0,0,0,0.85); color: #0f0; padding: 12px; font-family: monospace; font-size: 11px; border-radius: 8px; }
 
-        /* 设置弹窗 */
-        #modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-            z-index: 3000000; justify-content: center; align-items: center;
-        }
-        .modal-inner { 
-            background: #fff; padding: 20px; border-radius: 20px; width: 90%; max-width: 420px; 
-            max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
+        #modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 3000000; justify-content: center; align-items: center; }
+        .modal-inner { background: #fff; padding: 20px; border-radius: 20px; width: 90%; max-width: 420px; max-height: 85vh; overflow-y: auto; }
         .group { margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
-        .group label { display: block; font-size: 11px; color: #888; margin-bottom: 6px; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
-        
-        .switch-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
-        .switch-row input { width: auto; }
-
-        .save-btn { width: 100%; padding: 15px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-weight: bold; margin-top: 10px; font-size: 16px; }
+        label { display: block; font-size: 11px; color: #888; margin-bottom: 6px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .save-btn { width: 100%; padding: 15px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="start-btn" onclick="startApp()">
-        <h1>点击激活系统</h1>
-        <p>支持 网页/视频/长文本 遮盖测试</p>
+    <div id="start-btn" onclick="askPermission()">
+        <h1>点击启动系统</h1>
+        <p>iOS 用户请在弹窗点击“允许”</p>
     </div>
 
     <div class="ui-header">
-        <button class="btn" onclick="openModal()">⚙️ 设置</button>
-        <button class="btn btn-reset" onclick="calibrate()">↺ 重置偏转</button>
+        <button class="btn" onclick="openSet()">⚙️ 设置</button>
+        <button class="btn btn-reset" onclick="cali()">↺ 重置偏转</button>
     </div>
 
     <div id="stage">
         <video id="v-player" class="content-item" controls playsinline></video>
-        <iframe id="w-frame" class="content-item" frameborder="0"></iframe>
-        <div id="scroll-box">
-            <span id="text-span"></span>
-        </div>
+        <iframe id="w-frame" class="content-item"></iframe>
+        <div id="scroll-box"><span id="text-span"></span></div>
     </div>
 
     <div id="black-mask"></div>
 
-    <div id="debug-monitor">
-        [调试模式]<br>
-        当前偏转: <span id="d-deg">0.0</span>°<br>
-        遮罩程度: <span id="d-op">0</span>%<br>
-        物理: <span id="d-raw">0/0/0</span>
+    <div id="monitor">
+        偏转: <span id="m-deg">0.0</span>° | 遮罩: <span id="m-op">0</span>%
     </div>
 
-    <div id="modal" onclick="if(event.target==this) closeModal()">
+    <div id="modal" onclick="if(event.target==this) closeSet()">
         <div class="modal-inner">
-            <h3 style="margin:0 0 15px 0; text-align:center;">系统配置</h3>
-            
-            <div class="group">
-                <label>文本内容 (阅读器模式)</label>
-                <textarea id="set-text" rows="3"></textarea>
-            </div>
-
-            <div class="group">
-                <label>网页嵌入链接 (URL)</label>
-                <input type="text" id="set-web" placeholder="例如: https://m.bing.com">
-            </div>
-
-            <div class="group">
-                <label>视频源 (本地上传 或 粘贴链接)</label>
-                <input type="file" accept="video/*" onchange="uploadVid(this)">
-                <input type="text" id="set-vid" style="margin-top:8px;" placeholder="粘贴视频 MP4 链接">
-            </div>
-
+            <h3 style="margin:0 0 15px 0">系统配置</h3>
+            <div class="group"><label>长文本</label><textarea id="ipt-text" rows="3"></textarea></div>
+            <div class="group"><label>网页 URL</label><input type="text" id="ipt-web"></div>
+            <div class="group"><label>视频源</label><input type="file" onchange="upVid(this)"><input type="text" id="ipt-vid" placeholder="MP4 链接"></div>
             <div class="group" style="display:flex; gap:10px;">
-                <div><label>起算角度</label><input type="number" id="set-start"></div>
-                <div><label>全黑角度</label><input type="number" id="set-full"></div>
+                <div><label>起算角</label><input type="number" id="ipt-start"></div>
+                <div><label>全黑角</label><input type="number" id="ipt-full"></div>
             </div>
-
             <div class="group">
-                <label>遮罩逻辑 (媒体模式下强制全屏)</label>
-                <select id="set-mode">
-                    <option value="text">文字行块模式</option>
-                    <option value="full">全屏幕模式</option>
-                </select>
-                <div class="switch-row">
-                    <input type="checkbox" id="set-debug">
-                    <span style="font-size:13px;">开启调试监控面板</span>
-                </div>
+                <select id="ipt-mode"><option value="text">行块模式</option><option value="full">全屏模式</option></select>
+                <div style="margin-top:10px;"><input type="checkbox" id="ipt-debug"> 开启监控面板</div>
             </div>
-
-            <button class="save-btn" onclick="apply()">保存并应用</button>
-            <button class="btn" style="width:100%; margin-top:8px; border:none; background:#eee;" onclick="clearStage()">清除所有媒体内容</button>
+            <button class="save-btn" onclick="save()">保存并应用</button>
+            <button class="btn" style="width:100%; border:none; margin-top:8px;" onclick="clearAll()">清空媒体</button>
         </div>
     </div>
 
     <script>
-        let cfg = JSON.parse(localStorage.getItem('tly_v12_final')) || {
-            text: "这里是默认测试文本。你可以在设置里：\n1. 上传本地视频进行涂黑测试；\n2. 嵌入其他网页小窗；\n3. 这里的文字支持自动换行且行间距无缝涂黑。",
-            start: 10, full: 25, mode: 'text', debug: false
+        let cfg = JSON.parse(localStorage.getItem('tly_final_v14')) || {
+            text: "默认测试文本...", start: 10, full: 25, mode: 'text', debug: false
         };
+        let cur = {a:0, b:0, g:0}, zero = {a:0, b:0, g:0}, active = 'none';
+        const v = document.getElementById('v-player'), w = document.getElementById('w-frame'), 
+              s = document.getElementById('text-span'), m = document.getElementById('black-mask');
 
-        let cur = { a:0, b:0, g:0 }, zero = { a:0, b:0, g:0 };
-        let activeType = 'none';
+        function askPermission() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().then(res => { if(res === 'granted') run(); else alert("权限拒绝"); }).catch(alert);
+            } else { run(); }
+        }
 
-        const vP = document.getElementById('v-player');
-        const wF = document.getElementById('w-frame');
-        const tS = document.getElementById('text-span');
-        const sB = document.getElementById('scroll-box');
-        const bM = document.getElementById('black-mask');
-        const mon = document.getElementById('debug-monitor');
-
-        function startApp() {
+        function run() {
             document.getElementById('start-btn').style.display = 'none';
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', (e) => {
-                    cur.a = e.alpha || 0; cur.b = e.beta || 0; cur.g = e.gamma || 0;
-                    render();
-                }, true);
-            }
-            refreshView();
+            window.addEventListener('deviceorientation', (e) => { cur.a=e.alpha||0; cur.b=e.beta||0; cur.g=e.gamma||0; render(); }, true);
+            refresh();
         }
 
         function render() {
-            let da = cur.a - zero.a;
-            if (da > 180) da -= 360; if (da < -180) da += 360;
-            const dist = Math.sqrt(da*da*0.1 + (cur.b-zero.b)**2 + (cur.g-zero.g)**2);
+            let da = cur.a - zero.a; if(da > 180) da -= 360; if(da < -180) da += 360;
+            const deg = Math.sqrt(da*da*0.1 + (cur.b-zero.b)**2 + (cur.g-zero.g)**2);
+            let op = Math.max(0, Math.min(1, (deg - cfg.start) / (cfg.full - cfg.start)));
+            const color = `rgba(0, 0, 0, ${op})`;
 
-            let op = 0;
-            if (dist > cfg.start) op = (dist - cfg.start) / (cfg.full - cfg.start);
-            op = Math.max(0, Math.min(1, op));
-
-            const black = `rgba(0, 0, 0, ${op})`;
-
-            // 逻辑应用
-            if (activeType !== 'none' || cfg.mode === 'full') {
-                bM.style.opacity = op;
-                tS.style.backgroundColor = 'transparent';
-                tS.style.boxShadow = 'none';
+            if (active !== 'none' || cfg.mode === 'full') {
+                m.style.opacity = op; s.style.backgroundColor = 'transparent'; s.style.boxShadow = 'none';
             } else {
-                bM.style.opacity = 0;
-                tS.style.backgroundColor = black;
-                // 深度填补行间距
-                tS.style.boxShadow = `0 5px 0 ${black}, 0 -5px 0 ${black}`;
-                tS.style.color = op > 0.9 ? '#000' : '#111';
+                m.style.opacity = 0; s.style.backgroundColor = color;
+                s.style.boxShadow = `0 5px 0 ${color}, 0 -5px 0 ${color}`;
+                s.style.color = op > 0.9 ? '#000' : '#111';
             }
-
-            // 调试信息更新
-            if (cfg.debug) {
-                document.getElementById('d-deg').innerText = dist.toFixed(1);
-                document.getElementById('d-op').innerText = (op * 100).toFixed(0);
-                document.getElementById('d-raw').innerText = `${cur.a.toFixed(0)}/${cur.b.toFixed(0)}/${cur.g.toFixed(0)}`;
-            }
+            if (cfg.debug) { document.getElementById('m-deg').innerText = deg.toFixed(1); document.getElementById('m-op').innerText = (op*100).toFixed(0); }
         }
 
-        function refreshView() {
-            mon.style.display = cfg.debug ? 'block' : 'none';
-            tS.innerText = cfg.text;
+        function upVid(i) { if(i.files[0]) { active='video'; v.src=URL.createObjectURL(i.files[0]); update(); } }
+        function update() {
+            v.style.display = active==='video'?'block':'none'; w.style.display = active==='web'?'block':'none';
+            document.getElementById('scroll-box').style.display = active==='none'?'block':'none';
+            if(active==='video') v.play().catch(()=>{}); render();
         }
-
-        function uploadVid(ipt) {
-            if (ipt.files[0]) {
-                activeType = 'video';
-                vP.src = URL.createObjectURL(ipt.files[0]);
-                updateStage();
-            }
-        }
-
-        function updateStage() {
-            vP.style.display = activeType === 'video' ? 'block' : 'none';
-            wF.style.display = activeType === 'web' ? 'block' : 'none';
-            sB.style.display = activeType === 'none' ? 'block' : 'none';
-            if (activeType === 'video') vP.play().catch(()=>{});
-            render();
-        }
-
-        function clearStage() {
-            activeType = 'none';
-            vP.src = ""; wF.src = "";
-            updateStage();
-            closeModal();
-        }
-
-        function calibrate() {
-            zero = { ...cur };
-            render();
-        }
-
-        function openModal() {
+        function cali() { zero = {...cur}; render(); }
+        function openSet() {
             document.getElementById('modal').style.display = 'flex';
-            document.getElementById('set-text').value = cfg.text;
-            document.getElementById('set-start').value = cfg.start;
-            document.getElementById('set-full').value = cfg.full;
-            document.getElementById('set-mode').value = cfg.mode;
-            document.getElementById('set-debug').checked = cfg.debug;
+            document.getElementById('ipt-text').value=cfg.text; document.getElementById('ipt-start').value=cfg.start;
+            document.getElementById('ipt-full').value=cfg.full; document.getElementById('ipt-mode').value=cfg.mode;
+            document.getElementById('ipt-debug').checked=cfg.debug;
         }
-
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-        function apply() {
-            cfg.text = document.getElementById('set-text').value;
-            cfg.start = parseFloat(document.getElementById('set-start').value) || 10;
-            cfg.full = parseFloat(document.getElementById('set-full').value) || 25;
-            cfg.mode = document.getElementById('set-mode').value;
-            cfg.debug = document.getElementById('set-debug').checked;
-
-            const webUrl = document.getElementById('set-web').value;
-            const vidUrl = document.getElementById('set-vid').value;
-
-            if (webUrl) { activeType = 'web'; wF.src = webUrl; }
-            else if (vidUrl) { activeType = 'video'; vP.src = vidUrl; }
-
-            localStorage.setItem('tly_v12_final', JSON.stringify(cfg));
-            refreshView();
-            updateStage();
-            closeModal();
+        function closeSet() { document.getElementById('modal').style.display = 'none'; }
+        function save() {
+            cfg.text=document.getElementById('ipt-text').value; cfg.start=parseFloat(document.getElementById('ipt-start').value)||10;
+            cfg.full=parseFloat(document.getElementById('ipt-full').value)||25; cfg.mode=document.getElementById('ipt-mode').value;
+            cfg.debug=document.getElementById('ipt-debug').checked;
+            const webU=document.getElementById('ipt-web').value; const vidU=document.getElementById('ipt-vid').value;
+            if(webU){ active='web'; w.src=webU; } else if(vidU){ active='video'; v.src=vidU; }
+            localStorage.setItem('tly_final_v14', JSON.stringify(cfg)); refresh(); update(); closeSet();
         }
+        function clearAll() { active='none'; v.src=""; w.src=""; update(); closeSet(); }
+        function refresh() { document.getElementById('monitor').style.display = cfg.debug?'block':'none'; s.innerText = cfg.text; }
+        s.innerText = cfg.text;
     </script>
 </body>
 </html>
